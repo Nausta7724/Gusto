@@ -1,117 +1,196 @@
 import streamlit as st
-import json
-import os
-from PIL import Image
+import pandas as pd
+import requests
+import time
+import random
 
-# Config
-st.set_page_config(page_title="GUSTO PRO", layout="wide", page_icon="👨‍🍳")
+# --- CONFIGURATION DE LA PAGE ---
+st.set_page_config(page_title="GUSTO PRO", page_icon="👨‍🍳", layout="wide")
 
-# Style CSS pour un look Chef
+# --- PARAMÈTRES DE CONNEXION ---
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbylkx9BgPPzjq3X6sv4lYC1QpYLJOQTkPE-AhGZlapfi8tgk0qMrGCbtVrVANDqVPUL/exec"
+SHEET_ID = "1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI"
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
+# --- DESIGN CSS (MODERNE & REMPLI) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #FDFCFB; }
-    .recipe-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #FF4B4B; }
-    h1, h2 { color: #2C3E50; }
+    .stApp { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); }
+    [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e0e0e0; }
+    .main-card {
+        background: white; padding: 25px; border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px;
+        border-left: 5px solid #FF4B4B;
+    }
+    .stat-card {
+        background: #ffffff; padding: 15px; border-radius: 15px;
+        text-align: center; border: 1px solid #eee;
+    }
+    h1 { color: #1E1E1E; font-family: 'Trebuchet MS', sans-serif; font-weight: 800; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #FF4B4B; color: white; border: none; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-DB_FILE = "gusto_recipes.json"
+# --- FONCTIONS ---
+@st.cache_data(ttl=5) # Rafraîchissement ultra-rapide
+def load_data():
+    try:
+        df = pd.read_csv(CSV_URL)
+        df.columns = [c.strip() for c in df.columns]
+        return df
+    except: return pd.DataFrame()
 
-def charger_donnees():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding='utf-8') as f: return json.load(f)
-        except: pass
-    return {"Recettes": []}
+def save_to_google(data_list):
+    try:
+        response = requests.post(WEB_APP_URL, json=data_list)
+        return response.status_code == 200
+    except: return False
 
-if "db" not in st.session_state: st.session_state.db = charger_donnees()
+# Chargement des données
+df = load_data()
 
-def sauvegarder():
-    with open(DB_FILE, "w", encoding='utf-8') as f: json.dump(st.session_state.db, f, indent=4)
-
-# Navigation sidebar
+# --- NAVIGATION SIDEBAR ---
 with st.sidebar:
-    st.title("👨‍🍳 GUSTO PRO")
-    menu = st.radio("Aller vers :", ["📖 Mon Livre", "➕ Créer", "⚙️ Modifier/Supprimer"])
-
-# --- LIVRE DE RECETTES ---
-if menu == "📖 Mon Livre":
-    st.title("📖 Livre de Recettes")
-    recherche = st.text_input("🔍 Rechercher...")
+    st.markdown("<h1 style='text-align: center;'>👨‍🍳 GUSTO PRO</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    menu = st.radio("TABLEAU DE BORD", ["🏠 Vue d'ensemble", "📖 Mon Livre", "➕ Créer une Recette", "⚖️ Outils & Conversion"])
     
-    for i, r in enumerate(st.session_state.db["Recettes"]):
-        if recherche.lower() in r["nom"].lower():
-            with st.expander(f"🍴 {r['nom'].upper()}"):
-                c1, c2 = st.columns([1, 1.2])
-                with c1:
-                    st.write(f"⏱️ **Temps :** {r['temps']}")
-                    portions = st.number_input("Couverts", min_value=1, value=int(r.get('personnes', 1)), key=f"p_{i}")
-                    ratio = portions / r.get('personnes', 1)
-                    st.write("**🛒 Ingrédients :**")
-                    for ing in r["ingredients"]:
-                        try:
-                            q = float(ing['quantite']) * ratio
-                            st.write(f"- {ing['nom']} : {round(q, 2) if q > 0 else ''} {ing['unite']}")
-                        except: st.write(f"- {ing['nom']}")
-                with c2:
-                    st.write("**👨‍🍳 Préparation :**")
-                    for n, e in enumerate(r["etapes"]): st.write(f"{n+1}. {e}")
-                    
-                    # NOUVEAU : Option Photo ou Import
-                    st.write("---")
-                    source_img = st.radio("Ajouter une photo via :", ["Appareil Photo", "Fichier (Internet/Galerie)"], key=f"src_{i}")
-                    if source_img == "Appareil Photo":
-                        st.camera_input("Prendre la photo", key=f"cam_{i}")
-                    else:
-                        st.file_uploader("Choisir une image enregistrée", type=['jpg', 'png', 'jpeg'], key=f"file_{i}")
+    st.markdown("---")
+    st.subheader("⏱️ Minuteur Rapide")
+    m, s = st.columns(2)
+    min_val = m.number_input("Min", 0, 180, 10)
+    if st.button("Lancer Chrono"):
+        st.toast(f"Chrono lancé pour {min_val} minutes !", icon="🔥")
 
-# --- CRÉATION ---
-elif menu == "➕ Créer":
-    st.title("➕ Nouvelle Fiche")
-    with st.form("add_form", clear_on_submit=True):
-        nom = st.text_input("Nom du plat")
+# --- PAGE 1 : VUE D'ENSEMBLE (DASHBOARD) ---
+if menu == "🏠 Vue d'ensemble":
+    st.title("Bienvenue dans votre Cuisine digitale")
+    
+    # Ligne de Statistiques
+    s1, s2, s3, s4 = st.columns(4)
+    with s1: st.markdown(f'<div class="stat-card"><h3>📚</h3><b>{len(df)} Recettes</b></div>', unsafe_allow_html=True)
+    with s2: 
+        fav_count = len(df[df['Favori'] == 'Oui']) if 'Favori' in df.columns else 0
+        st.markdown(f'<div class="stat-card"><h3>❤️</h3><b>{fav_count} Favoris</b></div>', unsafe_allow_html=True)
+    with s3:
+        top_cat = df['Categorie'].mode()[0] if not df.empty else "N/A"
+        st.markdown(f'<div class="stat-card"><h3>📂</h3><b>Top: {top_cat}</b></div>', unsafe_allow_html=True)
+    with s4: st.markdown('<div class="stat-card"><h3>📅</h3><b>Janvier 2026</b></div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        st.subheader("🎲 Suggestion du moment")
+        if not df.empty:
+            recette = df.sample(1).iloc[0]
+            st.markdown(f"""
+            <div class="main-card">
+                <h2>{recette['Nom']}</h2>
+                <p><b>Temps :</b> {recette['Temps']} | <b>Difficulté :</b> {recette.get('Difficulte', 'Moyen')}</p>
+                <p><i>"{recette['Ingredients'][:100]}..."</i></p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("Ajoutez des recettes pour voir des suggestions ici !")
+            
+    with c2:
+        st.subheader("🌟 Note du Chef")
+        st.markdown("""
+        <div class="main-card" style="border-left: 5px solid #f1c40f;">
+            <p>"La cuisine, c'est un peu comme le code : un ingrédient oublié et tout change. Soyez précis !"</p>
+            <hr>
+            <p style='font-size: 0.8em;'>L'appli est connectée à votre Google Drive.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+# --- PAGE 2 : LE LIVRE ---
+elif menu == "📖 Mon Livre":
+    st.title("📖 Votre Répertoire Culinaire")
+    
+    col_search, col_filter = st.columns([3, 1])
+    search = col_search.text_input("🔍 Rechercher par nom ou ingrédient...", "")
+    cat_list = ["Toutes"] + (list(df['Categorie'].unique()) if not df.empty else [])
+    filtre = col_filter.selectbox("Catégorie", cat_list)
+
+    if not df.empty:
+        # Logique de filtrage
+        mask = df['Nom'].str.contains(search, case=False, na=False) | df['Ingredients'].str.contains(search, case=False, na=False)
+        filtered_df = df[mask]
+        if filtre != "Toutes":
+            filtered_df = filtered_df[filtered_df['Categorie'] == filtre]
+
+        for i, r in filtered_df.iterrows():
+            with st.expander(f"🍽️ {r['Nom'].upper()} — {r['Temps']}"):
+                t1, t2 = st.tabs(["🛒 Ingrédients & Infos", "👨‍🍳 Préparation"])
+                with t1:
+                    c1, c2 = st.columns(2)
+                    c1.write(f"**👥 Portions :** {r['Personnes']}")
+                    c1.write(f"**📂 Type :** {r['Categorie']}")
+                    c2.write(f"**⚡ Difficulté :** {r.get('Difficulte', 'Moyen')}")
+                    c2.write(f"**⭐ Note :** {r.get('Note', 5)}/5")
+                    st.markdown("**Liste des ingrédients :**")
+                    st.info(r['Ingredients'])
+                with t2:
+                    st.markdown("### Étapes à suivre :")
+                    st.write(r['Etapes'])
+    else:
+        st.warning("Votre livre est vide.")
+
+# --- PAGE 3 : CRÉATION (AUTO-SAVE) ---
+elif menu == "➕ Créer une Recette":
+    st.title("➕ Nouvelle Fiche Technique")
+    st.markdown("Remplissez le formulaire, la sauvegarde est automatique.")
+    
+    with st.form("recipe_form", clear_on_submit=True):
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        temps = c1.text_input("Temps")
-        pers = c2.number_input("Personnes", min_value=1, value=1)
-        ings = st.text_area("Ingrédients (Nom, Quantité, Unité)")
-        etapes = st.text_area("Étapes (une par ligne)")
+        nom = c1.text_input("Nom du plat *")
+        cat = c2.selectbox("Catégorie", ["Plat", "Entrée", "Dessert", "Sauce", "Boisson"])
         
-        if st.form_submit_button("Enregistrer"):
-            liste_ing = []
-            for l in ings.split('\n'):
-                p = l.split(',')
-                if len(p)==3: liste_ing.append({"nom":p[0].strip(),"quantite":p[1].strip(),"unite":p[2].strip()})
-                else: liste_ing.append({"nom":l.strip(),"quantite":"0","unite":""})
-            
-            st.session_state.db["Recettes"].append({
-                "nom": nom, "temps": temps, "personnes": pers, 
-                "ingredients": liste_ing, "etapes": etapes.split('\n')
-            })
-            sauvegarder()
-            st.success("C'est dans le livre !")
+        c3, c4, c5 = st.columns(3)
+        temps = c3.text_input("Temps (ex: 45 min)")
+        pers = c4.number_input("Nombre de personnes", 1, 50, 4)
+        diff = c5.selectbox("Difficulté", ["Facile", "Moyen", "Chef", "Étoilé"])
+        
+        ing = st.text_area("🛒 Ingrédients (séparez par des virgules)")
+        steps = st.text_area("👨‍🍳 Instructions de préparation")
+        
+        note = st.slider("Note personnelle", 1, 5, 5)
+        fav = st.checkbox("Ajouter aux favoris ❤️")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        submitted = st.form_submit_button("💾 ENREGISTRER DÉFINITIVEMENT")
+        
+        if submitted:
+            if nom and ing:
+                # Préparation des données (ordre du Google Sheet)
+                payload = [nom, temps, pers, ing, steps, cat, note, diff, "Oui" if fav else "Non"]
+                
+                with st.spinner("📦 Envoi au coffre-fort Google Drive..."):
+                    if save_to_google(payload):
+                        st.success(f"🌟 Magnifique ! '{nom}' a été ajouté à votre livre.")
+                        st.balloons()
+                        time.sleep(2)
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("Erreur de connexion. Vérifiez votre script Google Apps.")
+            else:
+                st.error("Le nom et les ingrédients sont obligatoires !")
 
-# --- GESTION (MODIFIER / SUPPRIMER) ---
-elif menu == "⚙️ Modifier/Supprimer":
-    st.title("⚙️ Gestion des recettes")
-    for i, r in enumerate(st.session_state.db["Recettes"]):
-        col_n, col_m, col_s = st.columns([3, 1, 1])
-        col_n.write(f"**{r['nom']}**")
-        if col_m.button("Modifier", key=f"edit_btn_{i}"): st.session_state.edit_idx = i
-        if col_s.button("🗑️", key=f"del_btn_{i}"):
-            st.session_state.db["Recettes"].pop(i)
-            sauvegarder()
-            st.rerun()
-            
-    if "edit_idx" in st.session_state:
-        idx = st.session_state.edit_idx
-        rec = st.session_state.db["Recettes"][idx]
-        st.write("---")
-        st.subheader(f"Modification de : {rec['nom']}")
-        with st.form("edit_form"):
-            new_nom = st.text_input("Nom", value=rec['nom'])
-            new_ings = st.text_area("Ingrédients", value="\n".join([f"{ig['nom']}, {ig['quantite']}, {ig['unite']}" for ig in rec['ingredients']]))
-            new_steps = st.text_area("Étapes", value="\n".join(rec['etapes']))
-            if st.form_submit_button("Sauvegarder"):
-                # (Ici on pourrait rajouter la logique de mise à jour complète)
-                st.info("Logique de sauvegarde en cours... Pour l'instant, recréez la recette si besoin de gros changements.")
-                del st.session_state.edit_idx
+# --- PAGE 4 : OUTILS ---
+elif menu == "⚖️ Outils & Conversion":
+    st.title("⚖️ Labo de Conversion")
+    st.write("Un doute sur les doses ? Utilisez l'outil ci-dessous.")
+    
+    col_u1, col_u2 = st.columns(2)
+    valeur = col_u1.number_input("Quantité", value=1.0)
+    unite = col_u2.selectbox("Conversion", ["Litre vers ml", "Grammes vers Oz", "Cuillère à soupe vers ml"])
+    
+    if unite == "Litre vers ml": res = valeur * 1000 ; u = "ml"
+    elif unite == "Grammes vers Oz": res = valeur * 0.035 ; u = "oz"
+    else: res = valeur * 15 ; u = "ml"
+    
+    st.metric("Résultat", f"{res} {u}")
