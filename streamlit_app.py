@@ -7,12 +7,12 @@ import hashlib
 # --- CONFIGURATION ---
 st.set_page_config(page_title="GUSTO VAULT", page_icon="🔐", layout="wide")
 
-# TON NOUVEAU LIEN SCRIPT (Mis à jour)
+# TON URL DE SCRIPT MISE À JOUR
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzBpkR8KzeCmPcZ_AJwWxuJWPNwcfgKcllipRoR1EIlmpys8PiVJsdI1SKy91io-osa/exec"
 SHEET_ID = "1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-# --- DESIGN ---
+# --- DESIGN & POLICE ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
@@ -23,9 +23,9 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EDF2F7;
         margin-bottom: 20px;
     }
-    .login-box {
-        max-width: 400px; margin: auto; padding: 40px;
-        background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    .stButton>button {
+        width: 100%; border-radius: 12px; background-color: #FF4B4B; color: white;
+        font-weight: 600; border: none; height: 3rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -41,34 +41,30 @@ if 'logged_in' not in st.session_state:
 # --- ÉCRAN DE CONNEXION ---
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    with st.container():
+    c1, c2, c3 = st.columns([1,1.5,1])
+    with c2:
         st.markdown("<h1 style='text-align: center;'>👨‍🍳 GUSTO</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B;'>Connectez-vous pour accéder à votre grimoire personnel</p>", unsafe_allow_html=True)
-        
-        c1, c2, c3 = st.columns([1,2,1])
-        with c2:
-            with st.form("login_form"):
-                u = st.text_input("Identifiant")
-                p = st.text_input("Mot de passe", type="password")
-                submit = st.form_submit_button("Se connecter / S'inscrire")
-                
-                if submit:
-                    if u and p:
-                        with st.spinner("Vérification..."):
-                            try:
-                                res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hash_pw(p)]})
-                                if res.text in ["SUCCESS", "CREATED"]:
-                                    st.session_state.logged_in = True
-                                    st.session_state.username = u
-                                    st.success(f"Bienvenue Chef {u} !")
-                                    time.sleep(1)
-                                    st.rerun()
-                                else:
-                                    st.error("Identifiants incorrects.")
-                            except:
-                                st.error("Erreur de connexion au serveur.")
-                    else:
-                        st.warning("Veuillez remplir tous les champs.")
+        st.info("Identifiez-vous pour accéder à vos recettes.")
+        with st.form("login_form"):
+            u = st.text_input("Identifiant (Pseudo)")
+            p = st.text_input("Mot de passe", type="password")
+            if st.form_submit_button("Se connecter / S'inscrire"):
+                if u and p:
+                    try:
+                        # Test de connexion au script Google
+                        res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hash_pw(p)]}, timeout=10)
+                        if res.text in ["SUCCESS", "CREATED"]:
+                            st.session_state.logged_in = True
+                            st.session_state.username = u
+                            st.success(f"Bienvenue Chef {u} !")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Identifiants incorrects ou erreur serveur.")
+                    except Exception as e:
+                        st.error(f"Erreur de connexion : Vérifiez que le script Google est déployé sur 'Tout le monde'.")
+                else:
+                    st.warning("Remplissez tous les champs.")
     st.stop()
 
 # --- SI CONNECTÉ : CHARGEMENT & FILTRAGE ---
@@ -77,7 +73,7 @@ def load_data():
     try:
         df = pd.read_csv(CSV_URL)
         df.columns = [c.strip() for c in df.columns]
-        # On ne garde que les recettes de l'utilisateur (Colonne K / 'Proprietaire')
+        # Filtrage par colonne K (Proprietaire)
         if 'Proprietaire' in df.columns:
             return df[df['Proprietaire'] == st.session_state.username]
         return df
@@ -86,7 +82,7 @@ def load_data():
 def send_to_google(values, action="add"):
     try:
         payload = {"action": action, "values": values}
-        response = requests.post(WEB_APP_URL, json=payload)
+        response = requests.post(WEB_APP_URL, json=payload, timeout=10)
         return response.status_code == 200
     except: return False
 
@@ -95,18 +91,15 @@ df = load_data()
 # --- BARRE LATÉRALE ---
 with st.sidebar:
     st.markdown(f"### 👨‍🍳 Chef : {st.session_state.username}")
-    menu = st.radio("NAVIGATION", ["🏠 Accueil", "📖 Mon Livre", "⚙️ Gestion", "🛒 Courses"])
-    
+    menu = st.radio("MENU", ["🏠 Accueil", "📖 Mon Livre", "⚙️ Gestion", "🛒 Courses"])
     st.markdown("---")
     st.subheader("⏱️ Minuteur")
     t_min = st.number_input("Minutes", 1, 180, 10)
     if st.button("🔔 Lancer"):
-        st.toast(f"Chrono lancé : {t_min}min", icon="⏳")
-    
+        st.toast(f"Chrono : {t_min}min", icon="⏳")
     if st.button("🔄 Actualiser"):
         st.cache_data.clear()
         st.rerun()
-        
     if st.button("🚪 Déconnexion"):
         st.session_state.logged_in = False
         st.rerun()
@@ -114,17 +107,16 @@ with st.sidebar:
 # --- PAGES ---
 
 if menu == "🏠 Accueil":
-    st.title(f"Bienvenue, {st.session_state.username} ! ✨")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Mes Recettes", len(df))
+    st.title("Tableau de bord")
     if not df.empty:
-        st.markdown("### 💡 Idée du jour")
+        st.metric("Mes Recettes", len(df))
         r = df.sample(1).iloc[0]
-        st.markdown(f"<div class='recipe-card'><h2>{r['Nom']}</h2><p>⏱️ {r['Temps']}</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='recipe-card'><h3>Suggestion : {r['Nom']}</h3><p>⏱️ {r['Temps']}</p></div>", unsafe_allow_html=True)
+    else:
+        st.write("Votre livre est vide. Allez dans 'Gestion' pour ajouter votre première recette !")
 
 elif menu == "📖 Mon Livre":
-    st.title("📖 Mon Grimoire")
+    st.title("Mes Recettes")
     search = st.text_input("🔍 Rechercher...")
     if not df.empty:
         filtered = df[df['Nom'].str.contains(search, case=False, na=False)]
@@ -137,52 +129,51 @@ elif menu == "📖 Mon Livre":
                     st.image(img, use_container_width=True)
                 with c2:
                     st.header(r['Nom'])
-                    st.write(f"**Temps :** {r['Temps']} | **Catégorie :** {r['Categorie']}")
-                    with st.expander("Détails"):
+                    st.write(f"⏱️ {r['Temps']} | 🍽️ {r['Categorie']}")
+                    with st.expander("Voir la préparation"):
                         st.write("**Ingrédients :**", r['Ingredients'])
-                        st.write("**Préparation :**", r['Etapes'])
+                        st.write("**Étapes :**", r['Etapes'])
                 st.markdown('</div>', unsafe_allow_html=True)
 
 elif menu == "⚙️ Gestion":
-    st.title("⚙️ Gérer mes Recettes")
+    st.title("Gestion")
     t1, t2 = st.tabs(["➕ Ajouter", "✏️ Modifier"])
-    
     with t1:
         with st.form("add"):
             n_nom = st.text_input("Nom *")
             n_temps = st.text_input("Temps")
-            n_ing = st.text_area("Ingrédients")
+            n_ing = st.text_area("Ingrédients (séparés par des virgules)")
             n_steps = st.text_area("Préparation")
-            n_img = st.text_input("Lien Image")
+            n_img = st.text_input("URL Image")
             n_cat = st.selectbox("Type", ["Plat", "Entrée", "Dessert"])
-            if st.form_submit_button("Sauvegarder"):
-                if n_nom and n_ing:
-                    # Ordre Colonnes: Nom, Temps, Pers, Ing, Steps, Cat, Note, Diff, Fav, Img, Proprietaire
+            if st.form_submit_button("Enregistrer"):
+                if n_nom:
+                    # Colonnes A à K (11 colonnes)
                     data = [n_nom, n_temps, 4, n_ing, n_steps, n_cat, 5, "Moyen", "Non", n_img, st.session_state.username]
                     if send_to_google(data, "add"):
-                        st.success("Ajouté !"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                        st.success("Recette enregistrée !"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
     with t2:
         if not df.empty:
-            target = st.selectbox("Recette à modifier", df['Nom'].tolist())
+            target = st.selectbox("Choisir une recette", df['Nom'].tolist())
             r = df[df['Nom'] == target].iloc[0]
             with st.form("edit"):
                 u_nom = st.text_input("Nom", value=r['Nom'])
                 u_ing = st.text_area("Ingrédients", value=r['Ingredients'])
                 u_steps = st.text_area("Préparation", value=r['Etapes'])
-                u_img = st.text_input("Image", value=r['Image'] if pd.notna(r['Image']) else "")
+                u_img = st.text_input("URL Image", value=r['Image'] if pd.notna(r['Image']) else "")
                 if st.form_submit_button("Mettre à jour"):
                     data = [u_nom, r['Temps'], 4, u_ing, u_steps, r['Categorie'], 5, "Moyen", "Non", u_img, st.session_state.username]
                     if send_to_google(data, "edit"):
-                        st.success("Modifié !"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                        st.success("Mise à jour réussie !"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 elif menu == "🛒 Courses":
-    st.title("🛒 Ma Liste")
+    st.title("Courses")
     if not df.empty:
-        selection = st.multiselect("Recettes :", df['Nom'].tolist())
+        selection = st.multiselect("Recettes pour la liste :", df['Nom'].tolist())
         if selection:
             ings = []
             for s in selection:
                 ings.extend(str(df[df['Nom']==s]['Ingredients'].values[0]).split(','))
             for i in sorted(set(ings)):
-                st.checkbox(i.strip())
+                st.checkbox(i.strip(), key=i)
