@@ -5,54 +5,80 @@ import time
 import hashlib
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="GUSTO PREMIUM", page_icon="👨‍🍳", layout="centered")
+st.set_page_config(page_title="GUSTO ARTISAN", page_icon="🥘", layout="centered")
 
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzBpkR8KzeCmPcZ_AJwWxuJWPNwcfgKcllipRoR1EIlmpys8PiVJsdI1SKy91io-osa/exec"
 SHEET_ID = "1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-# --- DESIGN PREMIUM & MOBILE-FIRST ---
+# --- DESIGN CUSTOM "HIGH-COLOR" ---
 st.markdown("""
     <style>
-    /* Masquer les éléments Streamlit qui buguent */
+    /* Masquage des éléments par défaut */
     header, [data-testid="stSidebar"], [data-testid="stHeader"] {display: none !important;}
-    .main .block-container {padding-top: 2rem !important; background-color: #fdfdfd;}
+    
+    /* Fond de l'application */
+    .stApp {
+        background: linear-gradient(180deg, #FFF5F0 0%, #FFFFFF 100%);
+    }
 
-    /* Titres stylisés */
-    h1 { color: #2D3436; font-weight: 800; text-align: center; margin-bottom: 20px; }
-    
-    /* Cartes de recettes modernes */
+    /* Carte de recette stylisée */
     .recipe-card {
-        background: white; 
-        padding: 20px; 
-        border-radius: 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
-        border: 1px solid #f1f1f1;
+        background: white;
+        border-radius: 25px;
+        padding: 20px;
         margin-bottom: 25px;
-        transition: transform 0.3s ease;
-    }
-    
-    /* Boutons personnalisés */
-    .stButton>button {
-        width: 100%; 
-        border-radius: 15px; 
-        background: linear-gradient(135deg, #FF4B2B 0%, #FF416C 100%);
-        color: white;
-        font-weight: 700; 
-        height: 3.8rem; 
         border: none;
-        box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3);
+        box-shadow: 0 15px 35px rgba(255, 75, 43, 0.08);
+        border-left: 8px solid #FF4B2B;
     }
-    
-    /* Badges de catégories */
-    .badge {
-        background-color: #f0f2f6;
-        color: #555;
-        padding: 5px 12px;
-        border-radius: 50px;
-        font-size: 0.8rem;
+
+    /* Style des titres */
+    h1 {
+        font-family: 'Outfit', sans-serif;
+        background: linear-gradient(90deg, #FF4B2B, #FF8E53);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 900;
+        font-size: 3rem !important;
+        text-align: center;
+    }
+
+    /* Boutons de navigation (Tabs personnalisés) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        background-color: white;
+        border-radius: 12px;
+        border: 1px solid #FF4B2B;
+        color: #FF4B2B;
         font-weight: 600;
-        margin-right: 5px;
+        padding: 0 20px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #FF4B2B !important;
+        color: white !important;
+    }
+
+    /* Bouton d'action principal */
+    .stButton>button {
+        background: linear-gradient(90deg, #FF4B2B 0%, #FF8E53 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 10px 20px rgba(255, 75, 43, 0.2);
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 25px rgba(255, 75, 43, 0.3);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -61,153 +87,100 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
-# --- SYSTÈME DE CONNEXION ---
+# --- LOGIN ---
 if not st.session_state.logged_in:
-    st.markdown("<h1>👨‍🍳 GUSTO</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;'>Votre grimoire culinaire sécurisé</p>", unsafe_allow_html=True)
-    with st.container():
-        u = st.text_input("Identifiant", placeholder="Nom de chef...")
-        p = st.text_input("Mot de passe", type="password", placeholder="Secret...")
-        if st.button("ACCÉDER AU GRIMOIRE"):
-            if u and p:
-                res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hashlib.sha256(p.encode()).hexdigest()]})
-                if res.text in ["SUCCESS", "CREATED"]:
-                    st.session_state.logged_in = True
-                    st.session_state.username = u
-                    st.rerun()
-            else: st.warning("Veuillez remplir les champs.")
+    st.markdown("<br><br><h1>GUSTO</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#666;'>Entrez dans votre atelier culinaire</p>", unsafe_allow_html=True)
+    u = st.text_input("Identifiant", key="user_in")
+    p = st.text_input("Mot de passe", type="password", key="pass_in")
+    if st.button("DÉMARRER LA CUISINE"):
+        if u and p:
+            res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hashlib.sha256(p.encode()).hexdigest()]})
+            if res.text in ["SUCCESS", "CREATED"]:
+                st.session_state.logged_in = True
+                st.session_state.username = u
+                st.rerun()
     st.stop()
 
-# --- CHARGEMENT DES DONNÉES ---
+# --- DATA ---
 @st.cache_data(ttl=1)
-def load_data():
+def load():
     try:
         df = pd.read_csv(CSV_URL)
         df.columns = [c.strip() for c in df.columns]
         return df[df['Proprietaire'] == st.session_state.username] if 'Proprietaire' in df.columns else df
     except: return pd.DataFrame()
 
-df = load_data()
+df = load()
 
-# --- MENU DE NAVIGATION ---
-st.markdown(f"<p style='text-align:right; color:#888;'>Chef: <b>{st.session_state.username}</b></p>", unsafe_allow_html=True)
-menu = st.selectbox("Navigation", ["🏠 Accueil", "📖 Mes Recettes", "⚙️ Gestion", "🛒 Ma Liste", "🚪 Déconnexion"])
+# --- HEADER ---
+st.markdown(f"<h1>GUSTO</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;'>Chef : <b>{st.session_state.username}</b></p>", unsafe_allow_html=True)
 
-if menu == "🚪 Déconnexion":
-    st.session_state.logged_in = False
-    st.rerun()
+# --- NAVIGATION PAR ONGLETS (VRAIE APP) ---
+tab_home, tab_book, tab_add, tab_shop, tab_out = st.tabs(["🏠", "📖 Recettes", "➕ Créer", "🛒 Courses", "🚪"])
 
-st.divider()
-
-# --- PAGES ---
-
-if menu == "🏠 Accueil":
-    st.markdown("<h1>Tableau de Bord</h1>", unsafe_allow_html=True)
+with tab_home:
+    st.markdown("### 🌟 Tableau de Bord")
     c1, c2 = st.columns(2)
-    c1.metric("Recettes", len(df))
-    c2.metric("Chef", st.session_state.username)
+    with c1:
+        st.markdown(f"<div style='background:white; padding:20px; border-radius:20px; text-align:center; border:1px solid #eee;'><h3>{len(df)}</h3>Recettes</div>", unsafe_allow_html=True)
+    with c2:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
     
     if not df.empty:
-        st.markdown("### 🎲 Suggestion Aléatoire")
+        st.markdown("### 👨‍🍳 Inspiration")
         r = df.sample(1).iloc[0]
-        st.markdown(f"""
+        st.markdown(f"<div class='recipe-card'><h3>{r['Nom']}</h3><p>{r['Temps']} • {r['Categorie']}</p></div>", unsafe_allow_html=True)
+
+with tab_book:
+    st.markdown("### 📖 Mon Grimoire")
+    search = st.text_input("🔍 Rechercher...")
+    if not df.empty:
+        for i, r in df[df['Nom'].str.contains(search, case=False, na=False)].iterrows():
+            st.markdown(f"""
             <div class='recipe-card'>
-                <h3>{r['Nom']}</h3>
-                <p>⏱️ {r['Temps']} | 🏷️ {r['Categorie']}</p>
+                <h2 style='color:#2D3436; margin:0;'>{r['Nom']}</h2>
+                <p style='color:#FF4B2B; font-weight:bold;'>{r['Categorie']} • {r['Temps']}</p>
             </div>
-        """, unsafe_allow_html=True)
-    
-    if st.button("🔄 Actualiser les recettes"):
-        st.cache_data.clear()
-        st.rerun()
+            """, unsafe_allow_html=True)
+            if pd.notna(r['Image']) and str(r['Image']).startswith('http'):
+                st.image(r['Image'], use_container_width=True)
+            with st.expander("📝 Voir la méthode"):
+                st.markdown(f"**Ingrédients :**\\n{r['Ingredients']}")
+                st.markdown(f"**Préparation :**\\n{r['Etapes']}")
 
-elif menu == "📖 Mes Recettes":
-    st.markdown("<h1>Mon Grimoire</h1>", unsafe_allow_html=True)
-    
-    # Nouvelle fonctionnalité : Filtre par catégorie
+with tab_add:
+    st.markdown("### ➕ Nouvelle Création")
+    with st.form("new_artisan"):
+        n = st.text_input("Nom du plat")
+        t = st.text_input("Temps")
+        cat = st.selectbox("Type", ["Plat", "Entrée", "Dessert", "Boisson"])
+        ing = st.text_area("Ingrédients (virgules entre chaque)")
+        etp = st.text_area("Préparation")
+        url = st.text_input("Lien Image")
+        if st.form_submit_button("PUBLIER LA RECETTE"):
+            data = [n, t, 4, ing, etp, cat, 5, "Moyen", "Non", url, st.session_state.username]
+            requests.post(WEB_APP_URL, json={"action": "add", "values": data})
+            st.success("Enregistré avec succès !"); time.sleep(1); st.cache_data.clear(); st.rerun()
+
+with tab_shop:
+    st.markdown("### 🛒 Liste Automatique")
     if not df.empty:
-        categories = ["Toutes"] + sorted(df['Categorie'].unique().tolist())
-        cat_filter = st.selectbox("Filtrer par type :", categories)
-        search = st.text_input("🔍 Rechercher un ingrédient ou un nom...")
-        
-        filtered = df.copy()
-        if cat_filter != "Toutes":
-            filtered = filtered[filtered['Categorie'] == cat_filter]
-        if search:
-            filtered = filtered[filtered['Nom'].str.contains(search, case=False) | filtered['Ingredients'].str.contains(search, case=False)]
-
-        for i, r in filtered.iterrows():
-            with st.container():
-                st.markdown(f"""
-                <div class='recipe-card'>
-                    <span class='badge'>{r['Categorie']}</span>
-                    <h2 style='margin-top:10px;'>{r['Nom']}</h2>
-                    <p style='color:#666;'><b>Temps :</b> {r['Temps']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if pd.notna(r['Image']) and str(r['Image']).startswith('http'):
-                    st.image(r['Image'], use_container_width=True)
-                
-                with st.expander("📖 Voir la préparation"):
-                    st.write("**Ingrédients :**")
-                    st.info(r['Ingredients'])
-                    st.write("**Étapes :**")
-                    st.write(r['Etapes'])
-                st.divider()
-
-elif menu == "⚙️ Gestion":
-    st.markdown("<h1>Configuration</h1>", unsafe_allow_html=True)
-    action = st.tabs(["➕ Ajouter", "✏️ Modifier", "🗑️ Supprimer"])
-    
-    with action[0]:
-        with st.form("add"):
-            n = st.text_input("Nom de la recette *")
-            t = st.text_input("Temps (ex: 20 min)")
-            c = st.selectbox("Catégorie", ["Plat", "Entrée", "Dessert", "Apéro", "Petit Déjeuner"])
-            i = st.text_area("Ingrédients (séparés par des virgules)")
-            e = st.text_area("Préparation pas à pas")
-            img = st.text_input("URL de l'image")
-            if st.form_submit_button("SAUVEGARDER"):
-                if n:
-                    data = [n, t, 4, i, e, c, 5, "Moyen", "Non", img, st.session_state.username]
-                    requests.post(WEB_APP_URL, json={"action": "add", "values": data})
-                    st.success("Recette ajoutée !"); time.sleep(1); st.cache_data.clear(); st.rerun()
-                else: st.error("Le nom est obligatoire.")
-
-    with action[1]:
-        if not df.empty:
-            target = st.selectbox("Recette à modifier", df['Nom'].tolist())
-            r = df[df['Nom'] == target].iloc[0]
-            with st.form("edit"):
-                un = st.text_input("Nom", value=r['Nom'])
-                uc = st.selectbox("Catégorie", ["Plat", "Entrée", "Dessert", "Apéro"], index=0)
-                ui = st.text_area("Ingrédients", value=r['Ingredients'])
-                ue = st.text_area("Étapes", value=r['Etapes'])
-                uimg = st.text_input("Image", value=r['Image'] if pd.notna(r['Image']) else "")
-                if st.form_submit_button("METTRE À JOUR"):
-                    data = [un, r['Temps'], 4, ui, ue, uc, 5, "Moyen", "Non", uimg, st.session_state.username]
-                    requests.post(WEB_APP_URL, json={"action": "edit", "values": data})
-                    st.success("Modifié !"); time.sleep(1); st.cache_data.clear(); st.rerun()
-
-    with action[2]:
-        st.warning("Fonctionnalité bientôt disponible : La suppression se fait via Google Sheets pour le moment.")
-
-elif menu == "🛒 Ma Liste":
-    st.markdown("<h1>🛒 Liste de Courses</h1>", unsafe_allow_html=True)
-    if not df.empty:
-        choix = st.multiselect("Sélectionnez vos plats :", df['Nom'].tolist())
+        choix = st.multiselect("Qu'est-ce qu'on mange ?", df['Nom'].tolist())
         if choix:
-            st.markdown("---")
-            all_ings = []
+            liste = []
             for c in choix:
-                all_ings.extend(str(df[df['Nom']==c]['Ingredients'].values[0]).split(','))
-            
-            for item in sorted(set(all_ings)):
-                st.checkbox(item.strip(), key=f"shop_{item}")
-            
-            # Nouvelle fonctionnalité : Bouton de partage
-            if st.button("📱 Copier la liste"):
-                liste_texte = "\\n".join(all_ings)
-                st.code(liste_texte)
-                st.toast("Liste prête à être copiée !")
+                liste.extend(str(df[df['Nom']==c]['Ingredients'].values[0]).split(','))
+            st.markdown("<div style='background:white; padding:15px; border-radius:15px;'>", unsafe_allow_html=True)
+            for item in sorted(set(liste)):
+                st.checkbox(item.strip(), key=f"s_{item}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+with tab_out:
+    st.markdown("### 🚪 Quitter")
+    if st.button("DÉCONNEXION"):
+        st.session_state.logged_in = False
+        st.rerun()
