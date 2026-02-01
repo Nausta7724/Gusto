@@ -5,75 +5,93 @@ import time
 import hashlib
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="GUSTO NOCTUA", page_icon="🔥", layout="centered")
+st.set_page_config(page_title="GUSTO OVERDRIVE", page_icon="⚡", layout="centered")
 
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzBpkR8KzeCmPcZ_AJwWxuJWPNwcfgKcllipRoR1EIlmpys8PiVJsdI1SKy91io-osa/exec"
 SHEET_ID = "1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-# --- DESIGN CORRIGÉ (TEXTE VISIBLE) ---
+# --- DESIGN "OVERDRIVE" (INTERFACE REMPLIE & DYNAMIQUE) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Poppins:wght@300;400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap');
 
     header, [data-testid="stSidebar"], [data-testid="stHeader"] {display: none !important;}
     
     .stApp {
-        background: radial-gradient(circle at top right, #1e293b, #0f172a, #000000);
-        color: #ffffff;
-        font-family: 'Poppins', sans-serif;
+        background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1b 100%);
+        color: #e0e0e0;
+        font-family: 'Rajdhani', sans-serif;
     }
 
-    .cyber-title {
-        font-family: 'Syncopate', sans-serif;
-        background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+    .glitch-title {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 3rem;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        margin-bottom: 5px;
+        filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.4));
+    }
+
+    /* Cartes Statistiques */
+    .stat-box {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(0, 210, 255, 0.2);
+        border-radius: 15px;
+        padding: 15px;
         text-align: center;
-        font-size: 2.5rem;
-        margin-bottom: 20px;
-        filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.6));
+        margin-bottom: 10px;
     }
 
-    /* --- CORRECTION DES INPUTS (L'ENFER DU BLANC SUR BLANC) --- */
-    input, textarea {
-        background-color: #000000 !important;
-        color: #ffffff !important;
-        border: 2px solid #4facfe !important;
-        border-radius: 10px !important;
-        padding: 10px !important;
-    }
-    
-    /* Pour le texte à l'intérieur des cases d'écriture */
-    div[data-baseweb="input"] {
-        background-color: #000000 !important;
-        border-radius: 10px !important;
-    }
-    
-    /* Correction de la couleur du texte saisi */
-    input[type="text"], input[type="password"], textarea {
-        -webkit-text-fill-color: #ffffff !important;
-    }
-
+    /* Grille de Recettes */
     .recipe-card {
-        background: rgba(255, 255, 255, 0.07);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 242, 254, 0.3);
+        background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
         border-radius: 20px;
         padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    .recipe-header {
+        border-left: 4px solid #00d2ff;
+        padding-left: 15px;
         margin-bottom: 15px;
     }
 
+    /* Inputs High-Contrast */
+    input, textarea, .stSelectbox {
+        background-color: #050505 !important;
+        color: #00d2ff !important;
+        border: 1px solid #3a7bd5 !important;
+        border-radius: 8px !important;
+    }
+
     .stButton>button {
-        background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
         color: white !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase;
+        border: none !important;
+        border-radius: 10px !important;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: bold;
         height: 3.5rem;
-        width: 100%;
-        border: none;
-        box-shadow: 0 0 15px rgba(79, 172, 254, 0.4);
+        transition: 0.3s;
+    }
+    
+    /* Etiquettes Ingrédients */
+    .ing-tag {
+        display: inline-block;
+        background: rgba(0, 210, 255, 0.1);
+        color: #00d2ff;
+        padding: 4px 10px;
+        border-radius: 5px;
+        margin: 3px;
+        font-size: 0.9rem;
+        border: 1px solid rgba(0, 210, 255, 0.3);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -84,10 +102,11 @@ if 'logged_in' not in st.session_state:
 
 # --- LOGIN ---
 if not st.session_state.logged_in:
-    st.markdown("<br><br><div class='cyber-title'>GUSTO</div>", unsafe_allow_html=True)
-    u = st.text_input("CHEF ID")
-    p = st.text_input("ACCESS CODE", type="password")
-    if st.button("INITIALISER LA CONNEXION"):
+    st.markdown("<br><div class='glitch-title'>GUSTO</div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;'>SYSTEM LOGIN REQUIRED</p>", unsafe_allow_html=True)
+    u = st.text_input("USER_ID")
+    p = st.text_input("PASSWORD", type="password")
+    if st.button("EXECUTE"):
         if u and p:
             res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hashlib.sha256(p.encode()).hexdigest()]})
             if res.text in ["SUCCESS", "CREATED"]:
@@ -107,54 +126,111 @@ def load():
 
 df = load()
 
-# --- MAIN APP ---
-st.markdown("<div class='cyber-title'>GUSTO</div>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align:center; color:#00f2fe;'>SESSION ACTIVE: {st.session_state.username.upper()}</p>", unsafe_allow_html=True)
+# --- UI PRINCIPALE ---
+st.markdown("<div class='glitch-title'>GUSTO</div>", unsafe_allow_html=True)
 
-tabs = st.tabs(["📊 DASH", "💎 GRIMOIRE", "🛠 CONFIG", "🛒 LIST"])
+tabs = st.tabs(["📡 HUB", "📂 ARCHIVES", "⚙️ CORE", "📦 CARGO"])
 
 with tabs[0]:
-    st.metric("RECETTES ENREGISTRÉES", len(df))
-    if st.button("🔄 SYNCHRONISATION"):
+    st.markdown("### 🖥️ DASHBOARD STATUS")
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f"<div class='stat-box'><small>RECETTES</small><br><b style='color:#00d2ff; font-size:1.5rem;'>{len(df)}</b></div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='stat-box'><small>CHEF</small><br><b style='color:#00d2ff; font-size:1.2rem;'>{st.session_state.username[:8]}</b></div>", unsafe_allow_html=True)
+    if c3.button("SYNC"):
         st.cache_data.clear()
         st.rerun()
+
     if not df.empty:
+        st.markdown("---")
+        st.markdown("### 🎯 SUGGESTION DU JOUR")
         r = df.sample(1).iloc[0]
-        st.markdown(f"<div class='recipe-card'><h3>Suggestion: {r['Nom']}</h3><p>{r['Temps']}</p></div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='recipe-card'>
+            <div class='recipe-header'>
+                <h2 style='margin:0; color:#00d2ff;'>{r['Nom']}</h2>
+                <span>⏱️ {r['Temps']} | 💠 {r['Categorie']}</span>
+            </div>
+            <p style='color:#888;'>Prêt pour une nouvelle expérience culinaire ?</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 with tabs[1]:
-    search = st.text_input("🔍 RECHERCHER")
+    st.markdown("### 📂 BASE DE DONNÉES")
+    search = st.text_input("🔍 FILTRER L'ARCHIVE...")
+    
     if not df.empty:
-        for i, r in df[df['Nom'].str.contains(search, case=False, na=False)].iterrows():
-            st.markdown(f"<div class='recipe-card'><h2>{r['Nom']}</h2><p>{r['Categorie']} | {r['Temps']}</p></div>", unsafe_allow_html=True)
+        f = df[df['Nom'].str.contains(search, case=False, na=False)]
+        for i, r in f.iterrows():
+            st.markdown(f"""
+            <div class='recipe-card'>
+                <div class='recipe-header'>
+                    <h2 style='margin:0; color:#00d2ff;'>{r['Nom']}</h2>
+                    <span style='font-size:0.8rem; color:#aaa;'>ID: {i} | {r['Categorie']}</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
             if pd.notna(r['Image']) and str(r['Image']).startswith('http'):
                 st.image(r['Image'], use_container_width=True)
-            with st.expander("OUVRIR LE PROTOCOLE"):
-                st.write(r['Ingredients'])
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("**🧪 INGRÉDIENTS**")
+                for ing in str(r['Ingredients']).split(','):
+                    st.markdown(f"<span class='ing-tag'>{ing.strip()}</span>", unsafe_allow_html=True)
+            with col_b:
+                st.markdown("**📜 PROTOCOLE**")
+                st.write(r['Etapes'][:100] + "...")
+            
+            with st.expander("DÉPLOYER LA FICHE COMPLÈTE"):
                 st.write(r['Etapes'])
+            st.markdown("</div>", unsafe_allow_html=True)
 
 with tabs[2]:
-    with st.form("add_new"):
-        n = st.text_input("NOM DU PLAT")
-        t = st.text_input("TEMPS")
-        i = st.text_area("INGRÉDIENTS")
-        e = st.text_area("ÉTAPES")
-        img = st.text_input("URL IMAGE")
-        if st.form_submit_button("INJECTER DANS LE CLOUD"):
-            data = [n, t, 4, i, e, "PLAT", 5, "MOYEN", "NON", img, st.session_state.username]
-            requests.post(WEB_APP_URL, json={"action": "add", "values": data})
-            st.success("INJECTION TERMINÉE"); time.sleep(1); st.cache_data.clear(); st.rerun()
+    st.markdown("### ⚙️ UNITÉ DE PRODUCTION")
+    action = st.radio("OPÉRATION", ["AJOUTER", "MODIFIER"], horizontal=True)
+    
+    with st.container():
+        if action == "AJOUTER":
+            with st.form("add_form"):
+                n = st.text_input("NOM DU PRODUIT")
+                t = st.text_input("TEMPS DE CYCLE")
+                cat = st.selectbox("CLASSE", ["Plat", "Entrée", "Dessert", "Boisson"])
+                i = st.text_area("COMPOSANTS (séparés par des virgules)")
+                e = st.text_area("INSTRUCTIONS DE MONTAGE")
+                img = st.text_input("URL VISUELLE (JPG/PNG)")
+                if st.form_submit_button("INJECTER DANS LE SYSTÈME"):
+                    if n:
+                        data = [n, t, 4, i, e, cat, 5, "Moyen", "Non", img, st.session_state.username]
+                        requests.post(WEB_APP_URL, json={"action": "add", "values": data})
+                        st.success("INJECTION TERMINÉE"); time.sleep(1); st.cache_data.clear(); st.rerun()
+        
+        elif action == "MODIFIER" and not df.empty:
+            target = st.selectbox("CHOISIR L'UNITÉ", df['Nom'].tolist())
+            r = df[df['Nom'] == target].iloc[0]
+            with st.form("edit_form"):
+                un = st.text_input("NOM", value=r['Nom'])
+                ui = st.text_area("INGRÉDIENTS", value=r['Ingredients'])
+                ue = st.text_area("ÉTAPES", value=r['Etapes'])
+                uimg = st.text_input("URL IMAGE", value=r['Image'] if pd.notna(r['Image']) else "")
+                if st.form_submit_button("MISE À JOUR DU CORE"):
+                    data = [un, r['Temps'], 4, ui, ue, r['Categorie'], 5, "Moyen", "Non", uimg, st.session_state.username]
+                    requests.post(WEB_APP_URL, json={"action": "edit", "values": data})
+                    st.success("CORE UPDATED"); time.sleep(1); st.cache_data.clear(); st.rerun()
 
 with tabs[3]:
+    st.markdown("### 📦 CARGO / LOGISTIQUE")
     if not df.empty:
-        choix = st.multiselect("SÉLECTIONNER", df['Nom'].tolist())
+        choix = st.multiselect("SÉLECTIONNER LES UNITÉS", df['Nom'].tolist())
         if choix:
             st.markdown("<div class='recipe-card'>", unsafe_allow_html=True)
             for c in choix:
-                st.write(f"🛒 **{c}**")
-                st.write(df[df['Nom']==c]['Ingredients'].values[0])
+                st.markdown(f"**⚡ SOURCE : {c}**")
+                ings = str(df[df['Nom']==c]['Ingredients'].values[0]).split(',')
+                for item in ings:
+                    st.checkbox(item.strip(), key=f"{c}_{item}")
             st.markdown("</div>", unsafe_allow_html=True)
 
-if st.button("🚪 DÉCONNEXION"):
+st.markdown("---")
+if st.button("EXIT SYSTEM"):
     st.session_state.logged_in = False
     st.rerun()
