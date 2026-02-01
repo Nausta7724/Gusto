@@ -1,79 +1,69 @@
 import streamlit as st
 import pandas as pd
 import requests
-import time
 import hashlib
+import time
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="GUSTO", page_icon="🍳", layout="centered")
 
-# LIENS (Ne pas modifier)
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzBpkR8KzeCmPcZ_AJwWxuJWPNwcfgKcllipRoR1EIlmpys8PiVJsdI1SKy91io-osa/exec"
-SHEET_ID = "1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI"
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+# Ton URL Google Script intégrée
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyU0SEgCs-GxgK7zTf958y1LkvyeCBGi5f5Ar1Mbtd6wEZtlJ9Uj2T8x10fgvQ2joRD/exec"
+CSV_URL = "https://docs.google.com/spreadsheets/d/1mMLxy0heVZp0QmBjB1bzhcXL8ZiIjgjBxvcAIyM-6pI/export?format=csv"
 
-# --- DESIGN PROFESSIONNEL ---
+# --- DESIGN "GUSTO ÉLÉGANCE" (Lisible & Rempli) ---
 st.markdown("""
     <style>
-    /* Suppression des éléments inutiles */
+    /* Nettoyage de l'interface */
     header, [data-testid="stSidebar"], [data-testid="stHeader"] {display: none !important;}
+    .stApp { background-color: #F8FAFC; color: #1E293B; }
     
-    /* Fond de l'écran */
-    .stApp {
-        background-color: #F4F7F9;
-        color: #1A1A1A;
-    }
-
-    /* Titre Principal */
+    /* Titre */
     .main-title {
-        font-family: 'Helvetica Neue', sans-serif;
         color: #E63946;
         text-align: center;
-        font-size: 2.8rem;
+        font-size: 3rem;
         font-weight: 800;
-        margin-bottom: 5px;
+        margin-bottom: 0px;
     }
-
+    
     /* Cartes Recettes */
     .recipe-card {
         background: white;
         border-radius: 15px;
         padding: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border: 1px solid #EAEAEA;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #E2E8F0;
     }
-
-    /* Badges de couleur */
+    
+    /* Contraste des champs de saisie */
+    input, textarea {
+        background-color: white !important;
+        color: #1E293B !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Bouton Rouge GUSTO */
+    .stButton>button {
+        background-color: #E63946 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        height: 3.5rem !important;
+        font-weight: bold !important;
+        width: 100%;
+        font-size: 1.1rem !important;
+    }
+    
     .tag {
-        display: inline-block;
-        padding: 4px 12px;
+        background: #F1FAEE;
+        color: #1D3557;
+        padding: 5px 15px;
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: bold;
-        background-color: #F1FAEE;
-        color: #1D3557;
-        margin-bottom: 10px;
-    }
-
-    /* Champs d'écriture (Correction contraste) */
-    input, textarea {
-        background-color: white !important;
-        color: #1A1A1A !important;
-        border: 1px solid #CCC !important;
-        border-radius: 8px !important;
-    }
-
-    /* Bouton principal */
-    .stButton>button {
-        width: 100%;
-        background-color: #E63946;
-        color: white !important;
-        border: none;
-        border-radius: 10px;
-        height: 3.5rem;
-        font-weight: bold;
-        font-size: 1.1rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -85,123 +75,145 @@ if 'logged_in' not in st.session_state:
 # --- ÉCRAN DE CONNEXION ---
 if not st.session_state.logged_in:
     st.markdown("<div class='main-title'>GUSTO</div>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;'>Votre carnet de recettes personnel</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;'>Connectez-vous pour accéder à vos recettes</p>", unsafe_allow_html=True)
+    
     with st.container():
-        u = st.text_input("Nom d'utilisateur")
+        u = st.text_input("Identifiant")
         p = st.text_input("Mot de passe", type="password")
-        if st.button("SE CONNECTER"):
+        
+        if st.button("ACCÉDER À MA CUISINE"):
             if u and p:
-                res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hashlib.sha256(p.encode()).hexdigest()]})
-                if res.text in ["SUCCESS", "CREATED"]:
-                    st.session_state.logged_in = True
-                    st.session_state.username = u
-                    st.rerun()
-            else: st.warning("Veuillez remplir les deux cases.")
+                # Hachage du mot de passe pour la sécurité
+                hashed_p = hashlib.sha256(p.encode()).hexdigest()
+                try:
+                    res = requests.post(WEB_APP_URL, json={"action": "login", "values": [u, hashed_p]}, timeout=10)
+                    
+                    if res.text == "SUCCESS":
+                        st.session_state.logged_in = True
+                        st.session_state.username = u
+                        st.rerun()
+                    elif res.text == "WRONG_PASS":
+                        st.error("❌ Mot de passe incorrect. Réessayez.")
+                    elif res.text == "CREATED":
+                        st.success("✅ Nouveau compte créé ! Re-cliquez pour vous connecter.")
+                    else:
+                        st.error(f"Erreur serveur : {res.text}")
+                except:
+                    st.error("Impossible de contacter le serveur. Vérifiez votre connexion.")
+            else:
+                st.warning("Veuillez remplir tous les champs.")
     st.stop()
 
-# --- CHARGEMENT DES DONNÉES ---
+# --- INTERFACE PRINCIPALE ---
+st.markdown("<div class='main-title'>GUSTO</div>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;'>Chef : <b>{st.session_state.username}</b></p>", unsafe_allow_html=True)
+
+# Barre de navigation par onglets (Claire et sans bug)
+tabs = st.tabs(["🏠 Accueil", "📖 Mes Recettes", "➕ Ajouter", "🛒 Courses"])
+
+# Chargement des données
 @st.cache_data(ttl=1)
-def charger_donnees():
+def load_data():
     try:
         df = pd.read_csv(CSV_URL)
         df.columns = [c.strip() for c in df.columns]
         return df[df['Proprietaire'] == st.session_state.username] if 'Proprietaire' in df.columns else df
     except: return pd.DataFrame()
 
-df = charger_donnees()
-
-# --- INTERFACE PRINCIPALE ---
-st.markdown("<div class='main-title'>GUSTO</div>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align:center; color:#457B9D;'>Chef : <b>{st.session_state.username}</b></p>", unsafe_allow_html=True)
-
-# Barre de navigation simple
-menu = st.tabs(["🏠 Accueil", "📖 Mes Recettes", "➕ Ajouter", "🛒 Courses"])
+df_user = load_data()
 
 # --- ONGLET ACCUEIL ---
-with menu[0]:
-    st.subheader("Résumé de votre cuisine")
-    col1, col2 = st.columns(2)
-    col1.metric("Recettes totales", len(df))
-    if col2.button("Actualiser 🔄"):
+with tabs[0]:
+    st.subheader("Tableau de bord")
+    c1, c2 = st.columns(2)
+    c1.metric("Vos recettes", len(df_user))
+    if c2.button("Rafraîchir 🔄"):
         st.cache_data.clear()
         st.rerun()
     
-    if not df.empty:
+    if not df_user.empty:
         st.markdown("---")
-        st.write("💡 **Suggestion pour aujourd'hui :**")
-        r = df.sample(1).iloc[0]
+        st.markdown("### 🎲 Suggestion du Chef")
+        r = df_user.sample(1).iloc[0]
         st.markdown(f"""
-        <div class='recipe-card'>
-            <span class='tag'>{r['Categorie']}</span>
-            <h3>{r['Nom']}</h3>
-            <p>⏱️ Temps de préparation : {r['Temps']}</p>
-        </div>
+            <div class='recipe-card'>
+                <span class='tag'>{r['Categorie']}</span>
+                <h3 style='margin-top:10px;'>{r['Nom']}</h3>
+                <p>⏱️ Temps : {r['Temps']}</p>
+            </div>
         """, unsafe_allow_html=True)
 
 # --- ONGLET MES RECETTES ---
-with menu[1]:
-    recherche = st.text_input("🔍 Rechercher une recette ou un ingrédient")
-    if not df.empty:
-        filtre = df[df['Nom'].str.contains(recherche, case=False, na=False) | df['Ingredients'].str.contains(recherche, case=False, na=False)]
-        for i, r in filtre.iterrows():
+with tabs[1]:
+    search = st.text_input("🔍 Rechercher un plat ou un ingrédient...")
+    if not df_user.empty:
+        filtered = df_user[df_user['Nom'].str.contains(search, case=False, na=False) | 
+                           df_user['Ingredients'].str.contains(search, case=False, na=False)]
+        
+        for i, r in filtered.iterrows():
             with st.container():
                 st.markdown(f"""
                 <div class='recipe-card'>
                     <span class='tag'>{r['Categorie']}</span>
                     <h2>{r['Nom']}</h2>
-                    <p><b>Temps :</b> {r['Temps']}</p>
+                    <p><b>⏱️ Temps :</b> {r['Temps']}</p>
                 """, unsafe_allow_html=True)
                 
                 if pd.notna(r['Image']) and str(r['Image']).startswith('http'):
                     st.image(r['Image'], use_container_width=True)
                 
-                with st.expander("Voir la recette complète"):
+                with st.expander("📖 Voir les détails de la recette"):
                     st.markdown("#### 🛒 Ingrédients")
-                    st.write(r['Ingredients'])
-                    st.markdown("#### 👨‍🍳 Préparation")
+                    st.info(r['Ingredients'])
+                    st.markdown("#### 👨‍🍳 Étapes de préparation")
                     st.write(r['Etapes'])
                 st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("Vous n'avez pas encore de recettes. Allez dans l'onglet 'Ajouter' !")
+        st.info("Votre carnet est vide. Ajoutez votre première recette !")
 
 # --- ONGLET AJOUTER ---
-with menu[2]:
-    st.subheader("Créer une nouvelle fiche")
-    with st.form("ajout_recette"):
-        nom = st.text_input("Nom du plat *")
-        temps = st.text_input("Temps (ex: 30 min)")
+with tabs[2]:
+    st.subheader("Ajouter une création")
+    with st.form("add_form"):
+        n = st.text_input("Nom de la recette *")
+        t = st.text_input("Temps (ex: 15 min)")
         cat = st.selectbox("Catégorie", ["Plat", "Entrée", "Dessert", "Apéro"])
-        ing = st.text_area("Liste des ingrédients")
-        etp = st.text_area("Étapes de préparation")
-        url = st.text_input("Lien d'une image (optionnel)")
+        ing = st.text_area("Ingrédients (séparés par des virgules)")
+        etp = st.text_area("Préparation pas à pas")
+        img = st.text_input("URL de l'image (optionnel)")
         
-        if st.form_submit_button("ENREGISTRER LA RECETTE"):
-            if nom:
-                data = [nom, temps, 4, ing, etp, cat, 5, "Moyen", "Non", url, st.session_state.username]
-                requests.post(WEB_APP_URL, json={"action": "add", "values": data})
-                st.success("Recette enregistrée !")
+        if st.form_submit_button("SAUVEGARDER DANS LE CLOUD"):
+            if n:
+                # Formatage des données pour Google Sheets
+                new_data = [n, t, 4, ing, etp, cat, 5, "Moyen", "Non", img, st.session_state.username]
+                requests.post(WEB_APP_URL, json={"action": "add", "values": new_data})
+                st.success("✨ Recette ajoutée avec succès !")
                 time.sleep(1)
                 st.cache_data.clear()
                 st.rerun()
-            else: st.error("Le nom du plat est obligatoire.")
+            else:
+                st.error("Le nom est obligatoire.")
 
 # --- ONGLET COURSES ---
-with menu[3]:
-    st.subheader("Votre liste de courses")
-    if not df.empty:
-        choix = st.multiselect("Sélectionnez les recettes à cuisiner :", df['Nom'].tolist())
-        if choix:
-            liste_totale = []
-            for c in choix:
-                liste_totale.extend(str(df[df['Nom']==c]['Ingredients'].values[0]).split(','))
-            
+with tabs[3]:
+    st.subheader("Liste de courses intelligente")
+    if not df_user.empty:
+        selected = st.multiselect("Plats prévus pour la semaine :", df_user['Nom'].tolist())
+        if selected:
             st.markdown("<div class='recipe-card'>", unsafe_allow_html=True)
-            for item in sorted(set(liste_totale)):
+            ingredients_finaux = []
+            for s in selected:
+                ingredients_finaux.extend(str(df_user[df_user['Nom']==s]['Ingredients'].values[0]).split(','))
+            
+            for item in sorted(set(ingredients_finaux)):
                 if item.strip():
-                    st.checkbox(item.strip(), key=item)
+                    st.checkbox(item.strip(), key=f"check_{item}")
             st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.warning("Ajoutez des recettes pour générer une liste.")
 
+# --- DÉCONNEXION ---
 st.markdown("<br><br>", unsafe_allow_html=True)
-if st.button("🚪 Déconnexion"):
+if st.button("🚪 QUITTER GUSTO"):
     st.session_state.logged_in = False
     st.rerun()
